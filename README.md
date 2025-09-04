@@ -1,6 +1,6 @@
 # Bitrix BPT Web Application / Веб-приложение Bitrix BPT
 
-[English](#english) | [Русский](#russian)
+[English](https://github.com/bslie/bitrix-bpt-web/tree/master?tab=readme-ov-file#english) | [Русский](https://github.com/bslie/bitrix-bpt-web?tab=readme-ov-file#русский)
 
 ---
 
