@@ -1,5 +1,5 @@
 import * as pako from 'pako';
-import { unserialize } from 'serialize-php';
+import { unserialize, serialize } from 'serialize-php';
 
 // Типы сжатия для .bpt файлов
 export enum CompressionKind {
@@ -82,19 +82,20 @@ function inflateDeflate(data: Uint8Array): string {
   return new TextDecoder('utf-8').decode(inflated);
 }
 
-// Методы упаковки
+// Методы упаковки - ВАЖНО: точно как в C# версии
 export function buildBytes(content: string, kind: CompressionKind): Uint8Array {
+  // КРИТИЧЕСКИ ВАЖНО: не изменяем содержимое, как в C# коде (НИЧЕГО НЕ ТРИММ)
   const textBytes = new TextEncoder().encode(content);
 
   switch (kind) {
     case CompressionKind.Plain:
       return textBytes;
     case CompressionKind.GZip:
-      return pako.gzip(textBytes);
+      return pako.gzip(textBytes, { level: 9 }); // SmallestSize
     case CompressionKind.ZLib:
-      return pako.deflate(textBytes);
+      return pako.deflate(textBytes, { level: 9, windowBits: 15 }); // ZLib с правильными параметрами
     case CompressionKind.Deflate:
-      return pako.deflateRaw(textBytes);
+      return pako.deflateRaw(textBytes, { level: 9 }); // Raw deflate
     default:
       throw new Error(`Неподдерживаемый тип сжатия: ${kind}`);
   }
@@ -140,6 +141,25 @@ export async function parseBptFile(file: File): Promise<BptFileInfo> {
 export function tryDeserializePhp(content: string): Record<string, unknown> | null {
   try {
     return unserialize(content) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+// Попытка сериализации объекта в PHP формат
+export function trySerializeToPhp(data: unknown): string | null {
+  try {
+    return serialize(data);
+  } catch {
+    return null;
+  }
+}
+
+// Попытка конвертации JSON в PHP serialized
+export function convertJsonToPhp(jsonString: string): string | null {
+  try {
+    const parsed = JSON.parse(jsonString);
+    return trySerializeToPhp(parsed);
   } catch {
     return null;
   }

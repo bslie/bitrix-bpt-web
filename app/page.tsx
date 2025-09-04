@@ -6,7 +6,10 @@ import { BptFileInfoComponent } from '@/components/BptFileInfo';
 import { BptContentViewer } from '@/components/BptContentViewer';
 import { BptExport } from '@/components/BptExport';
 import { BptProcessInfo } from '@/components/BptProcessInfo';
+import { BptExportDebug } from '@/components/BptExportDebug';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { BptFileInfo } from '@/lib/bpt';
 
 export default function Home() {
@@ -16,11 +19,20 @@ export default function Home() {
 
   const handleFileLoaded = (fileInfo: BptFileInfo) => {
     setCurrentFile(fileInfo);
+    // ВАЖНО: всегда сохраняем в оригинальном PHP serialized формате
     setEditedContent(fileInfo.content);
   };
 
   const handleContentChange = (newContent: string) => {
+    // ВАЖНО: принимаем только PHP serialized формат для экспорта
     setEditedContent(newContent);
+  };
+
+  const resetToOriginal = () => {
+    if (currentFile) {
+      setEditedContent(currentFile.content);
+      alert('Контент сброшен к оригинальному состоянию');
+    }
   };
 
   return (
@@ -56,6 +68,36 @@ export default function Home() {
                 onContentChange={handleContentChange}
                 onExportRequest={() => setIsExportDialogOpen(true)}
               />
+
+              {/* Отладочная панель */}
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <BptExportDebug 
+                    content={editedContent}
+                    originalFileInfo={currentFile}
+                  />
+                </div>
+                <div className="w-48">
+                  <Card className="h-fit border-green-200">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-green-700 text-sm">Быстрые действия</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      <Button 
+                        onClick={resetToOriginal}
+                        variant="outline" 
+                        size="sm" 
+                        className="w-full text-xs"
+                      >
+                        Сбросить к оригиналу
+                      </Button>
+                      <p className="text-xs text-muted-foreground">
+                        Если редактировали файл и получили ошибку - сбросьте к исходному состоянию
+                      </p>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
 
               {/* Диалог экспорта */}
               <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>

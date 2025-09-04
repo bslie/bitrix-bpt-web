@@ -36,7 +36,7 @@ export function BptProcessInfo({ content }: BptProcessInfoProps) {
   const constants = (processData.CONSTANTS as Record<string, unknown>) || {};
   const documentFields = (processData.DOCUMENT_FIELDS as Record<string, unknown>) || {};
   const template = processData.TEMPLATE as unknown[];
-  const templateInfo = (Array.isArray(template) && template[0] ? (template[0] as any)?.Properties : {}) || {};
+  const templateInfo = (Array.isArray(template) && template[0] ? (template[0] as Record<string, unknown>)?.Properties : {}) || {};
 
   const getTypeColor = (type: string): string => {
     switch (type.toLowerCase()) {
@@ -68,7 +68,7 @@ export function BptProcessInfo({ content }: BptProcessInfoProps) {
         <div className="grid grid-cols-2 gap-4 mb-4 p-3 bg-muted/30 rounded-lg">
           <div>
             <p className="text-xs text-muted-foreground mb-1">Название процесса</p>
-            <p className="font-medium text-sm">{templateInfo.Title || 'Без названия'}</p>
+            <p className="font-medium text-sm">{(templateInfo as Record<string, unknown>).Title as string || 'Без названия'}</p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground mb-1">Версия</p>

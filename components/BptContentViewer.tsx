@@ -27,7 +27,7 @@ const getStyles = async () => {
   const styles = await import('react-syntax-highlighter/dist/esm/styles/prism');
   return { oneLight: styles.oneLight, oneDark: styles.oneDark };
 };
-import { BptFileInfo, tryDeserializePhp } from '@/lib/bpt';
+import { BptFileInfo, tryDeserializePhp, convertJsonToPhp } from '@/lib/bpt';
 
 interface BptContentViewerProps {
   fileInfo: BptFileInfo;
@@ -42,7 +42,8 @@ export function BptContentViewer({ fileInfo, onContentChange, onExportRequest }:
   const [isDarkTheme, setIsDarkTheme] = useState(false);
   const [showLineNumbers, setShowLineNumbers] = useState(true);
   const [enableSyntaxHighlighting, setEnableSyntaxHighlighting] = useState(true);
-  const [syntaxStyles, setSyntaxStyles] = useState<{ oneLight: any; oneDark: any } | null>(null);
+  const [syntaxStyles, setSyntaxStyles] = useState<{ oneLight: unknown; oneDark: unknown } | null>(null);
+  const [isEditingPrettyFormat, setIsEditingPrettyFormat] = useState(false);
   
   // Определяем размер файла для автоматического отключения подсветки
   const isLargeFile = fileInfo.content.length > 50000; // 50KB
@@ -81,7 +82,8 @@ export function BptContentViewer({ fileInfo, onContentChange, onExportRequest }:
     return JSON.stringify(parsed, null, 2); // JSON формат для лучшей подсветки
   }, [fileInfo.content, fileInfo.isValidSerialized]);
 
-  const displayContent = showPretty ? prettyContent : editableContent;
+  // Для отображения используем pretty или оригинальный PHP serialized
+  const displayContent = showPretty && fileInfo.isValidSerialized ? prettyContent : editableContent;
   
   // Определение языка для подсветки
   const syntaxLanguage = useMemo(() => {
@@ -93,7 +95,17 @@ export function BptContentViewer({ fileInfo, onContentChange, onExportRequest }:
 
   const handleContentEdit = (newContent: string) => {
     setEditableContent(newContent);
-    onContentChange(newContent);
+    
+    if (isEditingPrettyFormat) {
+      // Если редактируем JSON, конвертируем в PHP serialized
+      const phpContent = convertJsonToPhp(newContent);
+      if (phpContent) {
+        onContentChange(phpContent);
+      }
+    } else {
+      // Если редактируем PHP serialized, сохраняем как есть
+      onContentChange(newContent);
+    }
   };
 
   const copyToClipboard = async () => {
@@ -108,8 +120,31 @@ export function BptContentViewer({ fileInfo, onContentChange, onExportRequest }:
   const toggleEditing = () => {
     setIsEditing(!isEditing);
     if (isEditing) {
-      // Выходим из режима редактирования - сохраняем изменения
-      onContentChange(editableContent);
+      // Выходим из режима редактирования - финальное сохранение
+      if (isEditingPrettyFormat) {
+        const phpContent = convertJsonToPhp(editableContent);
+        if (phpContent) {
+          onContentChange(phpContent);
+        } else {
+          alert('Ошибка: не удалось конвертировать JSON в PHP serialized формат');
+          return;
+        }
+      } else {
+        onContentChange(editableContent);
+      }
+      setIsEditingPrettyFormat(false);
+    } else {
+      // Входим в режим редактирования
+      if (showPretty && fileInfo.isValidSerialized) {
+        // Редактируем в JSON формате
+        setIsEditingPrettyFormat(true);
+        setEditableContent(prettyContent);
+      } else {
+        // Редактируем в PHP serialized формате
+        setIsEditingPrettyFormat(false);
+        setEditableContent(fileInfo.content);
+        setShowPretty(false);
+      }
     }
   };
 
@@ -127,7 +162,7 @@ export function BptContentViewer({ fileInfo, onContentChange, onExportRequest }:
                 id="pretty-mode"
                 checked={showPretty}
                 onCheckedChange={setShowPretty}
-                disabled={!fileInfo.isValidSerialized}
+                disabled={!fileInfo.isValidSerialized || isEditing}
               />
               <Label htmlFor="pretty-mode" className="text-xs">
                 Читаемый
@@ -183,7 +218,7 @@ export function BptContentViewer({ fileInfo, onContentChange, onExportRequest }:
       </CardHeader>
       <CardContent className="pt-0">
         <div className="space-y-3">
-          {/* Панель управления */}
+                        {/* Панель управления */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Button
@@ -197,7 +232,10 @@ export function BptContentViewer({ fileInfo, onContentChange, onExportRequest }:
               {isEditing && (
                 <span className="text-xs text-amber-600 flex items-center gap-1">
                   <AlertCircle className="w-3 h-3" />
-                  Осторожно при редактировании
+                  {isEditingPrettyFormat 
+                    ? 'Редактирование JSON (конвертируется в PHP)' 
+                    : 'Редактирование PHP serialized формата'
+                  }
                 </span>
               )}
             </div>
@@ -220,7 +258,9 @@ export function BptContentViewer({ fileInfo, onContentChange, onExportRequest }:
                 </>
               )}
               {isEditing && (
-                <span className="text-amber-600">Режим редактирования PHP</span>
+                <span className="text-amber-600">
+                  ⚠️ Редактирование в {isEditingPrettyFormat ? 'JSON' : 'PHP'} формате
+                </span>
               )}
             </div>
           </div>
@@ -240,7 +280,7 @@ export function BptContentViewer({ fileInfo, onContentChange, onExportRequest }:
               <div className="border rounded-md overflow-hidden bg-muted/5">
                 <SyntaxHighlighter
                   language={syntaxLanguage}
-                  style={isDarkTheme ? syntaxStyles.oneDark : syntaxStyles.oneLight}
+                  style={isDarkTheme ? (syntaxStyles.oneDark as Record<string, React.CSSProperties>) : (syntaxStyles.oneLight as Record<string, React.CSSProperties>)}
                   customStyle={{
                     margin: 0,
                     minHeight: '500px',

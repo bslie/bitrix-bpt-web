@@ -72,12 +72,11 @@ export function BptFileUpload({ onFileLoaded }: BptFileUploadProps) {
   const loadDemoFile = async () => {
     setIsLoading(true);
     try {
-      // Загружаем демо JSON и конвертируем в .bpt формат
-      const response = await fetch('/demo.txt');
-      const jsonText = await response.text();
+      // Создаем простой демо .bpt файл в PHP serialized формате
+      const demoBptContent = 'a:4:{s:7:"VERSION";i:2;s:8:"TEMPLATE";a:1:{i:0;a:3:{s:4:"Type";s:25:"SequentialWorkflowActivity";s:4:"Name";s:8:"Template";s:10:"Properties";a:1:{s:5:"Title";s:38:"Демонстрационный процесс";}}}s:9:"VARIABLES";a:1:{s:8:"Employee";a:4:{s:4:"Name";s:18:"Сотрудник";s:4:"Type";s:4:"user";s:8:"Required";s:1:"1";s:8:"Multiple";s:1:"0";}}s:9:"CONSTANTS";a:1:{s:7:"Manager";a:4:{s:4:"Name";s:24:"Руководитель";s:4:"Type";s:4:"user";s:8:"Required";s:1:"1";s:7:"Default";a:1:{i:0;s:6:"user_1";}}}}';
       
-      // Создаем искусственный File объект из JSON содержимого
-      const blob = new Blob([jsonText], { type: 'text/plain' });
+      // Создаем File объект с PHP serialized содержимым
+      const blob = new Blob([demoBptContent], { type: 'application/octet-stream' });
       const demoFile = new File([blob], 'demo-process.bpt', { type: 'application/octet-stream' });
       
       // Обрабатываем как обычный файл
